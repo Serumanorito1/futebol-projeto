@@ -11,10 +11,11 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Instalar Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Instalar dependências
         run: npm ci
@@ -22,32 +23,31 @@ jobs:
       - name: Sincronizar Capacitor
         run: npx cap sync ios
 
-      - name: Instalar CocoaPods
+      - name: Resolver pacotes Swift
         run: |
           cd ios/App
-          pod install
+          xcodebuild -resolvePackageDependencies \
+            -project App.xcodeproj
 
-      - name: Compilar aplicativo iOS
+      - name: Compilar iOS
         run: |
+          cd ios/App
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath $RUNNER_TEMP/App.xcarchive \
-            archive \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
-      - name: Exportar arquivo
+      - name: Compactar aplicativo
         run: |
-          mkdir -p build
-          cd $RUNNER_TEMP/App.xcarchive
-          zip -r "$GITHUB_WORKSPACE/build/Futebol-Projeto.xcarchive.zip" .
+          cd ios/App/build/Build/Products/Release-iphoneos
+          zip -r FutebolProjeto-iOS.zip App.app
 
-      - name: Disponibilizar arquivo
+      - name: Salvar aplicativo
         uses: actions/upload-artifact@v4
         with:
-          name: Futebol-Projeto-iOS
-          path: build/Futebol-Projeto.xcarchive.zip
+          name: FutebolProjeto-iOS
+          path: ios/App/build/Build/Products/Release-iphoneos/FutebolProjeto-iOS.zip
